@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import sqlite3; print\\('sqlite3 ok'\\)\")",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(python -c \"print\\('hello'\\)\")",
+      "Bash(py -3 --version)",
+      "Bash(py -3 -c \"import sqlite3; print\\('sqlite3 ok'\\)\")",
+      "Bash(py -3 \"c:/Users/万泽宇/Desktop/今晚上机/build_db.py\")",
+      "WebFetch(domain:github.com)",
+      "Bash(gh repo:*)",
+      "Bash(py -3 \"c:/Users/万泽宇/Desktop/今晚上机/crack_md5.py\")",
+      "Bash(py -3 -m pip install flask)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(py -3 -m pip install anthropic)",
+      "Bash(py -3 -c ':*)"
+    ]
+  }
+}
