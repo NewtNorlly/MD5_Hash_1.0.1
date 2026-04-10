@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MD5 彩虹表破解</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Consolas', 'Monaco', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      color: #7c83ff;
+      margin-bottom: 0.4rem;
+      letter-spacing: 1px;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: #555e7a;
+      margin-bottom: 2rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      color: #8892b0;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.75rem 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: #7c83ff;
+    }
+
+    input[type="text"]::placeholder {
+      color: #3a4060;
+    }
+
+    button {
+      background: #7c83ff;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #6670e8; }
+    button:active { transform: scale(0.97); }
+    button:disabled { background: #3a4060; cursor: not-allowed; }
+
+    .result {
+      border-radius: 8px;
+      font-size: 0.9rem;
+      min-height: 3.5rem;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: all 0.3s;
+    }
+
+    .result.idle {
+      background: #12151f;
+      border: 1px dashed #2d3148;
+      color: #3a4060;
+    }
+
+    .result.success {
+      background: #0d2318;
+      border: 1px solid #1a6640;
+      color: #4ade80;
+    }
+
+    .result.fail {
+      background: #1f0d0d;
+      border: 1px solid #6b1a1a;
+      color: #f87171;
+    }
+
+    .result.loading {
+      background: #12151f;
+      border: 1px solid #2d3148;
+      color: #7c83ff;
+    }
+
+    .result .icon { font-size: 1.2rem; flex-shrink: 0; }
+
+    .result .text { flex: 1; }
+
+    .result .password {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #86efac;
+    }
+
+    .result .meta {
+      font-size: 0.72rem;
+      color: #4a7c5a;
+      margin-top: 0.2rem;
+    }
+
+    .result.fail .meta { color: #7a4a4a; }
+
+    .stats {
+      margin-top: 2rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid #1e2235;
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.75rem;
+      color: #555e7a;
+    }
+
+    .stats span { color: #7c83ff; font-weight: 600; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .loading .icon { animation: pulse 1s infinite; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>MD5 彩虹表破解</h1>
+    <p class="subtitle">Rainbow Table Lookup · SQLite · AI 兜底</p>
+
+    <label>输入 MD5 哈希值</label>
+    <div class="input-row">
+      <input type="text" id="hashInput"
+             placeholder="e10adc3949ba59abbe56e057f20f883e"
+             maxlength="32"
+             autocomplete="off"
+             spellcheck="false">
+      <button id="crackBtn" onclick="crack()">查找</button>
+    </div>
+
+    <div class="result idle" id="result">
+      <span class="icon">🔍</span>
+      <span class="text">等待输入...</span>
+    </div>
+
+    <div class="stats" id="stats">
+      <div>数据库记录：<span id="statCount">加载中...</span></div>
+      <div>数据库大小：<span id="statSize">—</span></div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('hashInput');
+    const btn   = document.getElementById('crackBtn');
+    const box   = document.getElementById('result');
+
+    // 回车触发
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') crack(); });
+
+    async function crack() {
+      const hash = input.value.trim().toLowerCase();
+      if (hash.length !== 32) {
+        setResult('fail', '✗', 'MD5 应为 32 位十六进制字符串');
+        return;
+      }
+
+      setResult('loading', '⟳', '正在查询彩虹表...');
+      btn.disabled = true;
+
+      try {
+        const res  = await fetch('/crack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hash })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          setResult('fail', '✗', data.error);
+        } else if (data.found) {
+          const sourceLabel = data.source === 'ai'
+            ? '<span style="font-size:.7rem;background:#1a3a5c;color:#60a5fa;padding:2px 6px;border-radius:4px;margin-left:6px">AI 推测</span>'
+            : '<span style="font-size:.7rem;background:#1a3a1a;color:#4ade80;padding:2px 6px;border-radius:4px;margin-left:6px">数据库</span>';
+          box.className = 'result success';
+          box.innerHTML = `
+            <span class="icon">✓</span>
+            <div class="text">
+              <div class="password">${escHtml(data.password)}${sourceLabel}</div>
+              <div class="meta">查询耗时 ${data.time_ms} ms</div>
+            </div>`;
+        } else {
+          setResult('fail', '✗',
+            `彩虹表和 AI 均未找到匹配密码 &nbsp;<span style="font-size:.72rem;color:#7a4a4a">耗时 ${data.time_ms} ms</span>`);
+        }
+      } catch (e) {
+        setResult('fail', '!', '请求失败，请检查服务是否运行');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function setResult(cls, icon, msg) {
+      box.className = `result ${cls}`;
+      box.innerHTML = `<span class="icon">${icon}</span><span class="text">${msg}</span>`;
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // 加载数据库统计
+    fetch('/stats').then(r => r.json()).then(d => {
+      document.getElementById('statCount').textContent =
+        d.count ? d.count.toLocaleString() + ' 条' : '—';
+      document.getElementById('statSize').textContent =
+        d.size_mb ? d.size_mb + ' MB' : '—';
+    }).catch(() => {
+      document.getElementById('statCount').textContent = '—';
+    });
+  </script>
+</body>
+</html>
